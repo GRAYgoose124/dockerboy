@@ -16,7 +16,7 @@ def argparser():
     subparsers = parser.add_subparsers(dest="cmd")
     subparsers.required = True
 
-    cmds = { "Build": "b", "Run": "r", "Tensorboard": "tb", }
+    cmds = { "Build": "b", "Run": "r", "Tensorboard": "tb", "Config gen": "cg" }
 
     # build subcmd
     build_parser = subparsers.add_parser(cmds["Build"])
@@ -25,13 +25,12 @@ def argparser():
     run_parser = subparsers.add_parser(cmds["Run"])
     run_parser.add_argument("run_cmd", type=str, nargs="+")
 
-    run_parser.add_argument("-cd", "--container_dir", type=str, default=None)
-    run_parser.add_argument("-p", "--port", type=int, default=None)
-    run_parser.add_argument("-i", "--interactive", action="store_true", default=True)
-    run_parser.add_argument("-r", "--post_removal", action="store_true", default=True)
-
     # tensorboard subcmd
     tensorboard_parser = subparsers.add_parser(cmds["Tensorboard"])
+
+    # config gen subcmd
+    config_gen_parser = subparsers.add_parser(cmds["Config gen"])
+    config_gen_parser.add_argument("config_file", type=str, help="path to config file", default=".dboy.yaml.default", nargs="?")
 
     return parser
 
@@ -42,7 +41,7 @@ def default_config():
         "image_name": "default",
         "dockerfile_path": f"{root}/",
         "host_dir": f"{root}/shared",
-        "ports": [(6006,)],
+        "ports": [(6006,6006)],
         "interactive": True,
         "post_removal": True,
     })
@@ -55,7 +54,7 @@ def main():
     if args.config is not None:
         cfg_file = args.config
     else:
-        cfg_file = "default-dboy-config.yaml"
+        cfg_file = ".dboy.yaml"
 
     try:
         with open(cfg_file, "r") as f:
@@ -65,16 +64,18 @@ def main():
         print(f"Config file {cfg_file} not found, using default config")
         config = default_config()
 
-    my_image = MyImage(config.image_name, config.dockerfile_path)
-    my_container = MyContainer.from_image(my_image).configure(config.host_dir, config.ports)
+    my_container = config.into_container()
 
     match args.cmd:
         case "b":
-            my_image.build()
+            my_container.build_image()
         case "r":
             my_container.run(args.run_cmd)
         case "tb":
-            my_container.run(["tensorboard", "--logdir", "tb_logs"])
+            my_container.run("tensorboard --logdir tb_logs")
+        case "cg":
+            with open(args.config_file, "w") as f:
+                yaml.dump(default_config(), f)
         case _:
             raise ValueError(f"Invalid command: {args.cmd}")
 

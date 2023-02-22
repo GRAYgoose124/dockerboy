@@ -2,13 +2,12 @@ import yaml
 import subprocess
 
 from dataclasses import dataclass, field
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 
 from .dockerutils import build, run
 
 @dataclass
 class MyContainerSpec:
-    root: str
     image_name: str
     dockerfile_path: str
     host_dir: str
@@ -16,19 +15,31 @@ class MyContainerSpec:
     interactive: bool
     post_removal: bool
 
+    def into_container(self):
+        image = self.into_image()
+
+        cls = image.into_container()
+        cls.configure(self.host_dir, self.ports, self.interactive, self.post_removal)
+
+        return cls
+    
+    def into_image(self):
+        return MyImage(self.image_name, self.dockerfile_path)
+
 
 @dataclass
 class MyImage:
     _build_status: bool = field(init=False)
     name: str = field()
-    dockerfile_path: str
+    dockerfile: str
 
     def __post_init__(self):
         self.name = self.name + "-image"
         self._build_status = None
+        self.is_ready()
 
     def build(self):
-        status = build(self.name, self.dockerfile_path)
+        status = build(self.name, self.dockerfile)
         print(f"image `{self.name}` {'built!' if status else 'failed to build!'}")
         self._build_status = status
         return status
@@ -36,9 +47,7 @@ class MyImage:
     def is_ready(self):
         """ Returns True if the image was built successfully. 
         
-            TODO: Check docker to see if an image with the same name exists.
         """
-        # use docker to see if the image exists
         if self._build_status is None:
             images = subprocess.run(["docker", "images", "-a"], capture_output=True).stdout.decode().split()
             if images.count(self.name) >= 1:
@@ -47,6 +56,13 @@ class MyImage:
                 self._build_status = False
 
         return self._build_status
+
+    @staticmethod
+    def from_spec(spec: MyContainerSpec):
+        return spec.into_image()
+
+    def into_container(self):
+        return MyContainer.from_image(self)
 
 
 @dataclass
@@ -64,6 +80,9 @@ class MyContainer:
         self._configured = False
 
     def run(self, cmd: list[str], build=False):
+        if isinstance(cmd, str):
+            cmd = cmd.split()
+
         if not self._configured:
             raise ValueError("Container not configured!")
 
@@ -76,6 +95,9 @@ class MyContainer:
                 post_removal=self.post_removal, port=self.ports)
         else:
             print(f"Image {self._image.name} failed to execute, check build status!")
+
+    def build_image(self):
+        return self._image.build()
 
     @staticmethod
     def from_image(image: MyImage): 
@@ -91,15 +113,10 @@ class MyContainer:
         cls._image = image
     
         return cls
-
+    
     @staticmethod
     def from_spec(spec: MyContainerSpec):
-        image = MyImage(spec.image_name, spec.dockerfile_path)
-
-        cls = MyContainer.from_image(image)
-        cls.configure(spec.host_dir, spec.ports, spec.interactive, spec.post_removal)
-
-        return cls
+        return spec.into_container()
 
     def configure(self, host_dir: str, ports: list[tuple[int, int]] = [(6006,)], interactive: bool = True, post_removal: bool = True):
         self.host_dir = host_dir
