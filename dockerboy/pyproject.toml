@@ -14,4 +14,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-dockerboy = "dockerboy:main"
+dboy = "dockerboy:main"

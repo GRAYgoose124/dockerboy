@@ -2,7 +2,7 @@
 import os
 import argparse
 
-from .mydocker import MyTfContainer, MyTFImage
+from .mydocker import MyContainer, MyImage
 
 
 def argparser():
@@ -11,13 +11,15 @@ def argparser():
     subparsers = parser.add_subparsers(dest="cmd")
     subparsers.required = True
 
+    cmds = { "Build": "b", "Run": "r", "Tensorboard": "tb" }
+
     # build subcmd
-    build_parser = subparsers.add_parser("build")
+    build_parser = subparsers.add_parser(cmds["Build"])
     #build_parser.add_argument("image_name", type=str)
     #build_parser.add_argument("-d", "--dir", type=str, default=".")
 
     # run subcmd
-    run_parser = subparsers.add_parser("run")
+    run_parser = subparsers.add_parser(cmds["Run"])
     # run_parser.add_argument("image_name", type=str)
     # run_parser.add_argument("container_name", type=str)
     # run_parser.add_argument("host_dir", type=str)
@@ -29,7 +31,7 @@ def argparser():
     run_parser.add_argument("-r", "--post_removal", action="store_true", default=True)
 
     # tensorboard subcmd
-    tensorboard_parser = subparsers.add_parser("tensorboard")
+    tensorboard_parser = subparsers.add_parser(cmds["Tensorboard"])
     # tensorboard_parser.add_argument("image_name", type=str)
 
     return parser
@@ -39,22 +41,21 @@ def main():
     parser = argparser()
     args = parser.parse_args()
 
-    image_name = "my-tf-image"
-    dockerfile_path = f"{os.getcwd()}/my-docker-tf/"
-    host_dir = f"{os.getcwd()}/src"
-    # container_dir = "/src"
+    root = os.getcwd()
+    image_name = "my-tf"
+    dockerfile_path = f"{root}/my-docker-tf/"
+    host_dir = f"{root}/src"
     port = (6006, 6006)
 
-    # my_image = MyTFImage("my-tf-image", f"{os.getcwd()}/my-docker-tf/", f"{os.getcwd()}/src", "/src", [(6006, 6006)])
-    my_image = MyTFImage(image_name, dockerfile_path)
-    my_container = MyTfContainer.from_image(my_image).configure(host_dir, [port])
+    my_image = MyImage(image_name, dockerfile_path)
+    my_container = MyContainer.from_image(my_image).configure(host_dir, [port])
 
     match args.cmd:
-        case "build":
+        case "b":
             my_image.build()
-        case "run":
+        case "r":
             my_container.run(args.run_cmd)
-        case "tensorboard":
+        case "tb":
             my_container.run(["tensorboard", "--logdir", "tb_logs"])
         case _:
             raise ValueError(f"Invalid command: {args.cmd}")
