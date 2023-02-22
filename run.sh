@@ -4,7 +4,7 @@ HOST_DIR="$PWD/src"
 CONTAINER_DIR="/src"
 
 if [ $(docker ps -a | grep $CONTAINER_NAME | wc -l) -eq 1 ]; then
-    echo "Container $CONTAINER_NAME already exists. Executing \"$*\" in it."
+    echo "Container $CONTAINER_NAME already exists. Executing \"$*\" in it."    
     docker exec -it $CONTAINER_NAME $*
 else
     read -p "Do you want to remove the container after it is done? (Y/n) " rm_yes
@@ -21,5 +21,5 @@ else
         PORT=""
     fi
 
-    docker run -it $PORT $REMOVE --gpus all --name $CONTAINER_NAME -v $HOST_DIR:$CONTAINER_DIR -w $CONTAINER_DIR $IMAGE_NAME "$*"
+    docker run -it $PORT $REMOVE --gpus all --name $CONTAINER_NAME -v $HOST_DIR:$CONTAINER_DIR -w $CONTAINER_DIR $IMAGE_NAME $*
 fi
