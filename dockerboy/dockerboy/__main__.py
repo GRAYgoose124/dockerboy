@@ -3,9 +3,14 @@ import json
 import yaml
 
 import os
+import logging
 import argparse
 
 from .mydocker import MyContainer, MyImage, MyContainerSpec
+
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def argparser():

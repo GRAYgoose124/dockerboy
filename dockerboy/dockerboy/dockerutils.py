@@ -1,4 +1,7 @@
 import subprocess
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def build(image_name, dockerfile_path="."):
@@ -13,7 +16,6 @@ def build(image_name, dockerfile_path="."):
         return False
 
 
-
 def portcheck(port: tuple[int, int]):
     """ Ports can be malformed: (a,a) (a,) (,b) (a,b) """
     if isinstance(port[0], int) or isinstance(port[1], int):
@@ -25,7 +27,7 @@ def portcheck(port: tuple[int, int]):
     return port
 
 
-def run(image_name: str, container_name: str, host_dir: str, 
+def exec_or_run(image_name: str, container_name: str, host_dir: str, 
         cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None), 
         interactive: bool = True, post_removal: bool = True
     ):
@@ -55,8 +57,9 @@ def run(image_name: str, container_name: str, host_dir: str,
         if container_dir is None:
             container_dir = host_dir.split("/")[-1]
 
-        subprocess.run(["docker", "run", *optional, "--gpus", "all",
+        final_cmd = ["docker", "run", *optional, "--gpus", "all",
                         "--name", container_name, "-v", f"{host_dir}:{container_dir}", 
-                        "-w", container_dir, image_name, *cmd])
+                        "-w", container_dir, image_name, *cmd]
 
-
+        logger.debug(f"Running command: {' '.join(final_cmd)}")
+        subprocess.run(final_cmd)

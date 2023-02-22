@@ -4,7 +4,7 @@ import subprocess
 from dataclasses import dataclass, field
 from dataclasses import dataclass
 
-from .dockerutils import build, run
+from .dockerutils import build, exec_or_run
 
 @dataclass
 class MyContainerSpec:
@@ -15,11 +15,14 @@ class MyContainerSpec:
     interactive: bool
     post_removal: bool
 
-    def into_container(self):
+    def into_container(self, build=False):
         image = self.into_image()
 
-        cls = image.into_container()
+        cls = MyContainer.from_image(image)
         cls.configure(self.host_dir, self.ports, self.interactive, self.post_removal)
+
+        if build:
+            cls.build_image()
 
         return cls
     
@@ -61,9 +64,6 @@ class MyImage:
     def from_spec(spec: MyContainerSpec):
         return spec.into_image()
 
-    def into_container(self):
-        return MyContainer.from_image(self)
-
 
 @dataclass
 class MyContainer:
@@ -90,7 +90,7 @@ class MyContainer:
             self._image.build()
 
         if self._image.is_ready():
-            run(self._image.name, self.name, self.host_dir, cmd, 
+            exec_or_run(self._image.name, self.name, self.host_dir, cmd, 
                 container_dir=self.container_dir, interactive=self.interactive, 
                 post_removal=self.post_removal, port=self.ports)
         else:
@@ -100,7 +100,7 @@ class MyContainer:
         return self._image.build()
 
     @staticmethod
-    def from_image(image: MyImage): 
+    def from_image(image: MyImage, build=False): 
         cls = MyContainer(
             name=image.name.replace("image", "container"),
             host_dir=None,
@@ -115,8 +115,12 @@ class MyContainer:
         return cls
     
     @staticmethod
-    def from_spec(spec: MyContainerSpec):
-        return spec.into_container()
+    def from_spec(spec: MyContainerSpec, build=False):
+        container = spec.into_container()
+        if build:
+            container.build_image()
+
+        return 
 
     def configure(self, host_dir: str, ports: list[tuple[int, int]] = [(6006,)], interactive: bool = True, post_removal: bool = True):
         self.host_dir = host_dir
