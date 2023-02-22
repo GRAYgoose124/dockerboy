@@ -2,7 +2,7 @@
 import os
 import argparse
 
-from .dockerutils import build, run
+from .mydocker import MyTfContainer, MyTFImage
 
 
 def argparser():
@@ -15,7 +15,6 @@ def argparser():
     build_parser = subparsers.add_parser("build")
     #build_parser.add_argument("image_name", type=str)
     #build_parser.add_argument("-d", "--dir", type=str, default=".")
-
 
     # run subcmd
     run_parser = subparsers.add_parser("run")
@@ -31,42 +30,32 @@ def argparser():
 
     # tensorboard subcmd
     tensorboard_parser = subparsers.add_parser("tensorboard")
-    tensorboard_parser.add_argument("image_name", type=str)
+    # tensorboard_parser.add_argument("image_name", type=str)
 
     return parser
-
-
-def my_tf_image_build():
-    image_name = "my-tf-image"
-    dockerfile_path = f"{os.getcwd()}/my-docker-tf/"
-    build(image_name, dockerfile_path)
-
-
-def my_tf_run(cmd: list[str], interactive: bool = True, post_removal: bool = True, port: int = 6006):
-    # TODO: Make this data a dataclass and json serializable
-    image_name = "my-tf-image"
-    container_name = "my-tf-container"
-    host_dir = f"{os.getcwd()}/src"
-    container_dir = "/src"
-    port = (6006, 6006)
-
-    run(image_name, container_name, host_dir, cmd, 
-        container_dir=container_dir, interactive=interactive, 
-        post_removal=post_removal, port=port)
 
 
 def main():
     parser = argparser()
     args = parser.parse_args()
 
+    image_name = "my-tf-image"
+    dockerfile_path = f"{os.getcwd()}/my-docker-tf/"
+    host_dir = f"{os.getcwd()}/src"
+    # container_dir = "/src"
+    port = (6006, 6006)
+
+    # my_image = MyTFImage("my-tf-image", f"{os.getcwd()}/my-docker-tf/", f"{os.getcwd()}/src", "/src", [(6006, 6006)])
+    my_image = MyTFImage(image_name, dockerfile_path)
+    my_container = MyTfContainer.from_image(my_image).configure(host_dir, [port])
+
     match args.cmd:
         case "build":
-            my_tf_image_build()
+            my_image.build()
         case "run":
-            my_tf_run(args.run_cmd, args.interactive, args.post_removal)
+            my_container.run(args.run_cmd)
         case "tensorboard":
-            # tensorboard --logdir /tb_logs --host 0.0.0.0
-            my_tf_run(["tensorboard", "--logdir", "/tb_logs", "--host", "0.0.0.0"])
+            my_container.run(["tensorboard", "--logdir", "tb_logs"])
         case _:
             raise ValueError(f"Invalid command: {args.cmd}")
 

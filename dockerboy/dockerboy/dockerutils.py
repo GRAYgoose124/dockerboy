@@ -2,12 +2,31 @@ import subprocess
 
 
 def build(image_name, dockerfile_path="."):
-    # build the docker image
-    subprocess.run(["docker", "build", "-t", image_name, dockerfile_path])
+    # build the docker image and get the results
+    results = subprocess.run(["docker", "build", "-t", image_name, dockerfile_path],
+                            capture_output=True).stdout.decode()
+    
+    # if the image was built successfully, return True
+    if "Successfully built" in results:
+        return True
+    else:
+        return False
+
+
+
+def portcheck(port: tuple[int, int]):
+    """ Ports can be malformed: (a,a) (a,) (,b) (a,b) """
+    if isinstance(port[0], int) or isinstance(port[1], int):
+        if port[0] is None:
+            port = (port[1], port[1])
+        elif port[1] is None:
+            port = (port[0], port[0])
+
+    return port
 
 
 def run(image_name: str, container_name: str, host_dir: str, 
-        cmd: list[str], container_dir: str = None, port: tuple = (None, None), 
+        cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None), 
         interactive: bool = True, post_removal: bool = True
     ):
     # If the container is already running, just execute the command in it
@@ -18,13 +37,12 @@ def run(image_name: str, container_name: str, host_dir: str,
     else:
         optional = []
 
-        # Handle (a,a) (a,) (,b) (a,b) port cases
-        if isinstance(port[0], int) or isinstance(port[1], int):
-            if port[0] is None:
-                port = (port[1], port[1])
-            elif port[1] is None:
-                port = (port[0], port[0])
-
+        if isinstance(port, list):
+            for p in port:
+                p = portcheck(p)
+                optional.extend(["-p", f"0.0.0.0:{p[0]}:{p[1]}"])
+        else:
+            port = portcheck(port)
             optional.extend(["-p", f"0.0.0.0:{port[0]}:{port[1]}"])
 
         if interactive:
@@ -40,4 +58,5 @@ def run(image_name: str, container_name: str, host_dir: str,
         subprocess.run(["docker", "run", *optional, "--gpus", "all",
                         "--name", container_name, "-v", f"{host_dir}:{container_dir}", 
                         "-w", container_dir, image_name, *cmd])
+
 
