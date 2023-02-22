@@ -1,7 +1,20 @@
+import yaml
 import subprocess
+
 from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass
 
 from .dockerutils import build, run
+
+@dataclass
+class MyContainerSpec:
+    root: str
+    image_name: str
+    dockerfile_path: str
+    host_dir: str
+    ports: list[tuple[int, int]]
+    interactive: bool
+    post_removal: bool
 
 
 @dataclass
@@ -34,6 +47,7 @@ class MyImage:
                 self._build_status = False
 
         return self._build_status
+
 
 @dataclass
 class MyContainer:
@@ -78,10 +92,21 @@ class MyContainer:
     
         return cls
 
-    def configure(self, host_dir: str, ports: list[tuple[int, int]]):
+    @staticmethod
+    def from_spec(spec: MyContainerSpec):
+        image = MyImage(spec.image_name, spec.dockerfile_path)
+
+        cls = MyContainer.from_image(image)
+        cls.configure(spec.host_dir, spec.ports, spec.interactive, spec.post_removal)
+
+        return cls
+
+    def configure(self, host_dir: str, ports: list[tuple[int, int]] = [(6006,)], interactive: bool = True, post_removal: bool = True):
         self.host_dir = host_dir
         self.container_dir = "/" + host_dir.split("/")[-1]
         self.ports = ports
+        self.interactive = interactive
+        self.post_removal = post_removal
 
         self._configured = True
 
