@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import json
+from dockerboy.dockertils.wrapper import DockerWrapper
 import yaml
 
 import os
 import logging
 import argparse
 
-from .mydocker import MyContainer, MyImage, MyContainerSpec
+from .mydocker import MyContainerSpec
 
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,8 @@ def argparser():
              "Remove": "rm",
              "Shutdown": "sd",
              "Tensorboard": "tb", 
-             "Config gen": "cg" }
+             "Config gen": "cg",
+             "Container management": "cm" }
 
     # build subcmd
     build_parser = subparsers.add_parser(cmds["Build"])
@@ -49,6 +51,12 @@ def argparser():
     # config gen subcmd
     config_gen_parser = subparsers.add_parser(cmds["Config gen"])
     config_gen_parser.add_argument("config_file", type=str, help="path to config file", default=".dboy.yaml.default", nargs="?")
+
+    # container management subcmd
+    container_management_parser = subparsers.add_parser(cmds["Container management"])
+    # add container management subcmd argument
+    container_management_parser.add_argument("cm_cmd", type=str, help="CM command to run", choices=DockerWrapper.get_commands().values())
+    container_management_parser.add_argument("cm_args", type=str, help="CM command arguments", nargs="*")
 
     return parser
 
@@ -88,6 +96,7 @@ def main():
         case "b":
             my_container.build_image()
         case "r":
+            print(f"We will remove the container after running: {args.post_removal}")
             my_container.run(args.run_cmd, interactive=args.interactive, post_removal=args.post_removal)
         case "sd":
             my_container.shutdown()
@@ -99,8 +108,17 @@ def main():
             with open(args.config_file, "w") as f:
                 yaml.dump(default_config(), f)
         case _:
-            raise ValueError(f"Invalid command: {args.cmd}")
-
+            found_cmd = False
+            # container management
+            for method, cmd in DockerWrapper.get_commands().items():
+                if cmd == args.cm_cmd:
+                    found_cmd = True
+                    print(f"{cmd}: Running {method} with args {args.cm_args}")
+                    print(DockerWrapper.run_method(method, *args.cm_args))
+                    break
+            if not found_cmd:
+                print(f"Command {args.cm_cmd} not found")
+                    
 
 if __name__ == "__main__":
     main()

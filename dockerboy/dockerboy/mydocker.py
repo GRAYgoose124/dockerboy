@@ -1,10 +1,12 @@
+from dockerboy.dockertils.run import exec_or_run
 import yaml
 import subprocess
 
 from dataclasses import dataclass, field
 from dataclasses import dataclass
 
-from .dockerutils import build, cmd_new_container, exec_or_run, get_container_id, remove_container, shutdown_container, is_container_running
+from .dockertils.wrapper import DockerWrapper, build
+
 
 @dataclass
 class MyContainerSpec:
@@ -79,7 +81,7 @@ class MyContainer:
 
     def __post_init__(self):
         self._image = None
-        self._alive = is_container_running(self.name)
+        self._alive = DockerWrapper.is_container_running(self.name)
         self._configured = False
 
     def run(self, cmd: list[str], build=False, interactive=None, post_removal=None):
@@ -104,14 +106,14 @@ class MyContainer:
                 container_dir=self.container_dir, interactive=interactive, 
                 post_removal=post_removal, port=self.ports)
 
-            self._alive = is_container_running(self.name)
+            self._alive = DockerWrapper.is_container_running(self.name)
         else:
             print(f"Image {self._image.name} failed to execute, check build status!")
 
     def shutdown(self):
         if self._alive:
-            shutdown_container(self.name)
-            self._alive = is_container_running(self.name)
+            DockerWrapper.shutdown_container(self.name)
+            self._alive = DockerWrapper.is_container_running(self.name)
 
             print(f"Shutdown status: {not self._alive}")
 
@@ -119,7 +121,7 @@ class MyContainer:
         if self._alive:
             self.shutdown()
 
-        remove_container(self.name)
+        DockerWrapper.remove_container(self.name)
         
     def build_image(self):
         return self._image.build()
