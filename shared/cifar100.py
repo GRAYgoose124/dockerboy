@@ -7,16 +7,17 @@ Original file is located at
     https://colab.research.google.com/drive/1zsGo13GXaKF9dovBjxZ-BwK3v8Ph_8lV
 """
 
+import os
+import logging
+import numpy as np
+import tensorflow_datasets as tfds
 import tensorflow as tf
 
 # Are we using a GPU?
-print("GPU: ", "Avaliable" if tf.config.list_physical_devices('GPU') else "No GPU Accelaration Avaliable!")
+print("GPU: ", "Avaliable" if tf.config.list_physical_devices(
+    'GPU') else "No GPU Accelaration Avaliable!")
 
 # import matplotlib.pyplot as plt
-import tensorflow_datasets as tfds
-import numpy as np
-import os 
-import logging
 
 FORCED_REBUILD = True
 FORCED_RETRAIN = False
@@ -30,7 +31,7 @@ logging.getLogger('tensorflow').setLevel(logging.ERROR)
     split=['train', 'test'],
     shuffle_files=True,
     as_supervised=True,
-    
+
     with_info=True,
 )
 
@@ -52,8 +53,11 @@ logging.getLogger('tensorflow').setLevel(logging.ERROR)
 num_classes = ds_info.features['label'].num_classes
 
 # Normalize the pixel values of the images
+
+
 def normalize_image(image, label):
     return tf.cast(image, tf.float32) / 255.0, label
+
 
 ds_train = ds_train.map(normalize_image)
 ds_test = ds_test.map(normalize_image)
@@ -63,14 +67,23 @@ ds_train = ds_train.shuffle(buffer_size=10000)
 ds_train = ds_train.batch(128)
 ds_test = ds_test.batch(128)
 
-if os.path.exists('cifar100_trained') and not FORCED_REBUILD and not FORCED_RETRAIN:
+if os.path.exists(
+        'cifar100_trained') and not FORCED_REBUILD and not FORCED_RETRAIN:
     # load the trained model
     model = tf.keras.models.load_model('cifar100_trained')
     print(f"Model Loaded!")
-else: 
+else:
     # Define the model
     model = tf.keras.Sequential([
-        tf.keras.layers.Conv2D(128, 3, 1, activation=tf.nn.relu, input_shape = (32,32,3)),
+        tf.keras.layers.Conv2D(
+            128,
+            3,
+            1,
+            activation=tf.nn.relu,
+            input_shape=(
+                32,
+                32,
+                3)),
         tf.keras.layers.MaxPool2D(2, 2),
         tf.keras.layers.Conv2D(256, 3, 1, activation=tf.nn.relu),
         tf.keras.layers.MaxPool2D(2, 2),
@@ -80,7 +93,6 @@ else:
         tf.keras.layers.Dense(64, activation=tf.nn.relu),
         tf.keras.layers.Dense(num_classes, activation=tf.nn.softmax)
     ])
-
 
     # Compile the model
     model.compile(
@@ -104,12 +116,16 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="tb_logs")
 #             tf.summary.image("Training data", self.data, max_outputs=25, step=epoch)
 # image_callback = ImageCallback("tb_logs", ds_train)
 
-# Train the model 
-model.fit(ds_train, epochs=500, validation_data=ds_test, callbacks=[tensorboard_callback])
+# Train the model
+model.fit(
+    ds_train,
+    epochs=500,
+    validation_data=ds_test,
+    callbacks=[tensorboard_callback])
 tf.keras.models.save_model(model,
-                            'cifar100_trained',
-                            include_optimizer=True
-)
+                           'cifar100_trained',
+                           include_optimizer=True
+                           )
 
 model.summary()
 

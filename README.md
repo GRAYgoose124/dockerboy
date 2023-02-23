@@ -21,13 +21,12 @@ match args.cmd:
 
     dboy -h
 
-
-## Running
+# Running
 You should create a shared dir and a Dockerfile first.
-### Generate config
+## Generate config
     dboy cfg -i
 
-### Build and run some command
+## Build and run some command
 
     dboy b [--rebuild]
     dboy r <command>
@@ -35,7 +34,7 @@ You should create a shared dir and a Dockerfile first.
     # especially while something is already running
     dboy tb 
 
-## Container management
+# Container management
 This is a passthrough for DockerWrapper - you can run anything there. Rudimentary.
 
     dboy cm -h

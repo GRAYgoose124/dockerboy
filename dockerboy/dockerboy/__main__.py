@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from dockerboy.utils.wrapper import DockerWrapper
+from dockerboy.dockwrap.wrapper import DockerWrapper
 from dockerboy.utils.config import interactive_config_builder, load_config, default_config, save_config
 import yaml
 
@@ -11,13 +11,14 @@ import argparse
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
-cmds = { "Build": "b",
-            "Run": "r", 
-            "Remove": "rm",
-            "Shutdown": "sd",
-            "Tensorboard": "tb", 
-            "Config gen": "cfg",
-            "Container management": "cm" }
+cmds = {"Build": "b",
+        "Run": "r",
+        "Remove": "rm",
+        "Shutdown": "sd",
+        "Tensorboard": "tb",
+        "Config gen": "cfg",
+        "Container management": "cm"}
+
 
 def argparser():
     parser = argparse.ArgumentParser()
@@ -29,17 +30,32 @@ def argparser():
 
     # build subcmd
     build_parser = subparsers.add_parser(cmds["Build"])
-    build_parser.add_argument("-r", "--rebuild", action="store_true", dest="rebuild", default=False)
+    build_parser.add_argument(
+        "-r",
+        "--rebuild",
+        action="store_true",
+        dest="rebuild",
+        default=False)
 
     # run subcmd
     run_parser = subparsers.add_parser(cmds["Run"])
-    run_parser.add_argument("-ni", "--non-interactive", action="store_false", dest="interactive", default=True)
-    run_parser.add_argument("-nrm", "--post-removal", action="store_false", dest="post_removal", default=True)
+    run_parser.add_argument(
+        "-ni",
+        "--non-interactive",
+        action="store_false",
+        dest="interactive",
+        default=True)
+    run_parser.add_argument(
+        "-nrm",
+        "--post-removal",
+        action="store_false",
+        dest="post_removal",
+        default=True)
     run_parser.add_argument("run_cmd", type=str, nargs="+")
 
     # remove subcmd
     remove_parser = subparsers.add_parser(cmds["Remove"])
-    
+
     # shutdown subcmd
     shutdown_parser = subparsers.add_parser(cmds["Shutdown"])
 
@@ -48,15 +64,27 @@ def argparser():
 
     # config gen subcmd
     config_gen_parser = subparsers.add_parser(cmds["Config gen"])
-    config_gen_parser.add_argument("-i", "--interactive", action="store_true", dest="build_cfg_interactive", default=False)
+    config_gen_parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        dest="build_cfg_interactive",
+        default=False)
 
     # container management subcmd
-    container_management_parser = subparsers.add_parser(cmds["Container management"])
+    container_management_parser = subparsers.add_parser(
+        cmds["Container management"])
     # add container management subcmd argument
-    help_str = "\n".join([f"\t\t{name} - {c}" for name, c in DockerWrapper.get_commands().items()])
+    help_str = "\n".join(
+        [f"\t\t{name} - {c}" for name, c in DockerWrapper.get_commands().items()])
 
-    container_management_parser.add_argument("cm_cmd", type=str, help=f"CM cmds: {help_str}", choices=DockerWrapper.get_commands().values())
-    container_management_parser.add_argument("cm_args", type=str, help="CM command arguments", nargs="*")
+    container_management_parser.add_argument(
+        "cm_cmd",
+        type=str,
+        help=f"CM cmds: {help_str}",
+        choices=DockerWrapper.get_commands().values())
+    container_management_parser.add_argument(
+        "cm_args", type=str, help="CM command arguments", nargs="*")
 
     return parser
 
@@ -64,13 +92,14 @@ def argparser():
 def main():
     parser = argparser()
     args = parser.parse_args()
-    
+
     if args.config is not None:
         cfg_file = args.config
     else:
         cfg_file = ".dboy.yaml"
 
-    # If this is set, we're running a `cfg` command which will generate a config file and exit.
+    # If this is set, we're running a `cfg` command which will generate a
+    # config file and exit.
     if args.cmd == cmds["Config gen"]:
         if args.build_cfg_interactive:
             save_config(interactive_config_builder(), args.config)
@@ -93,11 +122,17 @@ def main():
             else:
                 my_container.build_image()
         case "r":
-            print(f"We will remove the container after running: {args.post_removal}")
-            my_container.run(args.run_cmd, interactive=args.interactive, post_removal=args.post_removal)
+            print(
+                f"We will remove the container after running: {args.post_removal}")
+            my_container.run(
+                args.run_cmd,
+                interactive=args.interactive,
+                post_removal=args.post_removal)
 
-            # if a container was created without --rm before, we need to remove it manually
-            if args.post_removal and DockerWrapper.does_container_exist(my_container.name):
+            # if a container was created without --rm before, we need to remove
+            # it manually
+            if args.post_removal and DockerWrapper.does_container_exist(
+                    my_container.name):
                 my_container.remove()
         # TODO: can be CM commands?
         case "sd":
@@ -118,7 +153,7 @@ def main():
             pass
         case _:
             print("Unknown command")
-                    
+
 
 if __name__ == "__main__":
     main()
