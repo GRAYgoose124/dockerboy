@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+from dockerboy.dockertils.misc import default_config
 from dockerboy.dockertils.wrapper import DockerWrapper
 import yaml
 
@@ -64,18 +65,6 @@ def argparser():
     return parser
 
 
-def default_config():
-    root = os.getcwd()
-    return MyContainerSpec(**{
-        "image_name": "default",
-        "dockerfile_path": f"{root}/",
-        "host_dir": f"{root}/shared",
-        "ports": [(6006,6006)],
-        "interactive": True,
-        "post_removal": True,
-    })
-
-
 def main():
     parser = argparser()
     args = parser.parse_args()
@@ -91,7 +80,7 @@ def main():
             config = yaml.unsafe_load(f)
     except FileNotFoundError:
         print(f"Config file {cfg_file} not found, using default config")
-        config = default_config()
+        config = MyContainerSpec(**default_config())
 
     my_container = config.into_container()
 

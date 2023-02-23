@@ -7,7 +7,6 @@ from dockerboy.dockertils.misc import portcheck
 logger = logging.getLogger(__name__)
 
 
-
 def container_run(image_name: str, container_name: str, host_dir: str,
         cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None),
         interactive: bool = True, post_removal: bool = True
@@ -57,10 +56,8 @@ def cmd_new_container(image_name: str, container_name: str, host_dir: str,
 
 def exec_or_run(image_name: str, container_name: str, host_dir: str, 
         cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None), 
-        interactive: bool = True, post_removal: bool = True
+        interactive: bool = True, post_removal: bool = True, rebuild: bool = False
     ):
-    build_container = lambda: cmd_new_container(image_name, container_name, host_dir, cmd, container_dir, port, interactive, post_removal)
-
     # If the container is already running, just execute the command in it
     if DockerWrapper.is_container_running(container_name):
         print(f"Container {container_name} already exists. Executing \"{cmd}\" in it.")
@@ -73,12 +70,17 @@ def exec_or_run(image_name: str, container_name: str, host_dir: str,
         start_str = subprocess.run(["docker", "start", container_name], capture_output=True).stdout.decode()
         if "Error" in start_str:
             print("Error starting container. Creating a new one and executing the command.")
-            build_container()
-            return
+            if rebuild:
+                print("Rebuilding container")
+                container_name = DockerWrapper.update_and_rebuild_container(container_name)
+                container_run(image_name, container_name, host_dir, cmd, container_dir, port, interactive, post_removal)
+            else:
+                cmd_new_container(image_name, container_name, host_dir, cmd, container_dir, port, interactive, post_removal)
         else:
             print("Started container")
-
-        subprocess.run(["docker", "exec", "-it", container_name, *cmd])
+            subprocess.run(["docker", "exec", "-it", container_name, *cmd])
     else:
         print(f"Container {container_name} does not exist. Creating it and executing \"{cmd}\"")
-        build_container()
+        cmd_new_container(image_name, container_name, host_dir, cmd, container_dir, port, interactive, post_removal)
+
+    return container_name

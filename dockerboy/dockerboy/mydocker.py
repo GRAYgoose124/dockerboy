@@ -5,7 +5,10 @@ import subprocess
 from dataclasses import dataclass, field
 from dataclasses import dataclass
 
-from .dockertils.wrapper import DockerWrapper, build
+from .dockertils.wrapper import DockerWrapper
+from .dockertils.build import build
+
+
 
 
 @dataclass
@@ -16,6 +19,7 @@ class MyContainerSpec:
     ports: list[tuple[int, int]]
     interactive: bool
     post_removal: bool
+    rebuild: bool
 
     def into_container(self, build=False):
         image = self.into_image()
@@ -30,6 +34,7 @@ class MyContainerSpec:
     
     def into_image(self):
         return MyImage(self.image_name, self.dockerfile_path)
+
 
 
 @dataclass
@@ -78,6 +83,7 @@ class MyContainer:
 
     interactive: bool
     post_removal: bool
+    rebuild: bool
 
     def __post_init__(self):
         self._image = None
@@ -102,9 +108,15 @@ class MyContainer:
 
             # Todo build image from old container and run new container rather
             # than destroying it - rebuild_image/run_container
-            exec_or_run(self._image.name, self.name, self.host_dir, cmd, 
+            new_name = exec_or_run(self._image.name, self.name, self.host_dir, cmd, 
                 container_dir=self.container_dir, interactive=interactive, 
-                post_removal=post_removal, port=self.ports)
+                post_removal=post_removal, port=self.ports, rebuild=self.rebuild)
+
+            if new_name != self.name:
+                # exec_or_run returns the new container name if it was rebuilt
+                # Because it was already rebuilt, we shouldn't use .rebuild()
+                self.name = new_name
+                self._image.name = self.name.replace("container", "image")
 
             self._alive = DockerWrapper.is_container_running(self.name)
         else:
@@ -127,7 +139,7 @@ class MyContainer:
         return self._image.build()
 
     def rebuild(self):
-        self.name = DockerWrapper.rebuild_container(self.name)
+        self.name = DockerWrapper.update_and_rebuild_container(self.name)
         self._image = MyImage(self.name, self._image.dockerfile)
 
         self.build_image()

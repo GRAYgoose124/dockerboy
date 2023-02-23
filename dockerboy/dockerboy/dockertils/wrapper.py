@@ -9,21 +9,6 @@ from dockerboy.dockertils.misc import image_to_container_name, update_version
 logger = logging.getLogger(__name__)
 
 
-# exe funcs
-
-# image management
-def build(image_name, dockerfile_path="."):
-    # build the docker image and get the results
-    results = subprocess.run(["docker", "build", "-t", image_name, dockerfile_path],
-                            capture_output=True).stdout.decode()
-    
-    # if the image was built successfully, return True
-    if "Successfully built" in results:
-        return True
-    else:
-        return False
-
-
 # container management
 class DockerWrapper:
     # get statics from class without instantiating
@@ -127,8 +112,8 @@ class DockerWrapper:
         return container_name
         
     @staticmethod
-    def rebuild_container(container_name: str):
-        """rbic"""
+    def update_and_rebuild_container(container_name: str):
+        """uarc"""
         # Does the container exist?
         if not DockerWrapper.does_container_exist(container_name):
             raise ValueError(f"Container {container_name} does not exist")
