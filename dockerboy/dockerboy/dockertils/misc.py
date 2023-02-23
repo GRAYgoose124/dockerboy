@@ -8,3 +8,18 @@ def portcheck(port: tuple[int, int]):
             port = (port[0], port[0])
 
     return port
+
+
+
+def update_version(container_name: str):
+    # parse the version number
+    name, version = container_name.split(":")
+    version = int(version[1:])
+    return f"{name}:v{version}"
+
+
+def image_to_container_name(image_name: str):
+    """Dockerboy API always defines a container name as the image name with "image" replaced by "container".
+    The image name always ends with "image" and the container name always ends with "container".
+    """
+    return image_name.replace("image", "container")

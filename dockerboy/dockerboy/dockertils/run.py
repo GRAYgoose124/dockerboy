@@ -59,6 +59,8 @@ def exec_or_run(image_name: str, container_name: str, host_dir: str,
         cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None), 
         interactive: bool = True, post_removal: bool = True
     ):
+    build_container = lambda: cmd_new_container(image_name, container_name, host_dir, cmd, container_dir, port, interactive, post_removal)
+
     # If the container is already running, just execute the command in it
     if DockerWrapper.is_container_running(container_name):
         print(f"Container {container_name} already exists. Executing \"{cmd}\" in it.")
@@ -70,7 +72,8 @@ def exec_or_run(image_name: str, container_name: str, host_dir: str,
         print(f"Container {container_name} already exists, but is not running. Starting it and executing \"{cmd}\"")
         start_str = subprocess.run(["docker", "start", container_name], capture_output=True).stdout.decode()
         if "Error" in start_str:
-            print(start_str)
+            print("Error starting container. Creating a new one and executing the command.")
+            build_container()
             return
         else:
             print("Started container")
@@ -78,4 +81,4 @@ def exec_or_run(image_name: str, container_name: str, host_dir: str,
         subprocess.run(["docker", "exec", "-it", container_name, *cmd])
     else:
         print(f"Container {container_name} does not exist. Creating it and executing \"{cmd}\"")
-        cmd_new_container(image_name, container_name, host_dir, cmd, container_dir, port, interactive, post_removal)
+        build_container()

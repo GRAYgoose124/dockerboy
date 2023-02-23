@@ -32,6 +32,7 @@ def argparser():
 
     # build subcmd
     build_parser = subparsers.add_parser(cmds["Build"])
+    build_parser.add_argument("-r", "--rebuild", action="store_true", dest="rebuild", default=False)
 
     # run subcmd
     run_parser = subparsers.add_parser(cmds["Run"])
@@ -55,7 +56,9 @@ def argparser():
     # container management subcmd
     container_management_parser = subparsers.add_parser(cmds["Container management"])
     # add container management subcmd argument
-    container_management_parser.add_argument("cm_cmd", type=str, help="CM command to run", choices=DockerWrapper.get_commands().values())
+    help_str = "\n".join([f"\t\t{name} - {c}" for name, c in DockerWrapper.get_commands().items()])
+
+    container_management_parser.add_argument("cm_cmd", type=str, help=f"CM cmds: {help_str}", choices=DockerWrapper.get_commands().values())
     container_management_parser.add_argument("cm_args", type=str, help="CM command arguments", nargs="*")
 
     return parser
@@ -94,7 +97,10 @@ def main():
 
     match args.cmd:
         case "b":
-            my_container.build_image()
+            if args.rebuild:
+                my_container.rebuild()
+            else:
+                my_container.build_image()
         case "r":
             print(f"We will remove the container after running: {args.post_removal}")
             my_container.run(args.run_cmd, interactive=args.interactive, post_removal=args.post_removal)
@@ -111,9 +117,8 @@ def main():
         case "cg":
             with open(args.config_file, "w") as f:
                 yaml.dump(default_config(), f)
-        case _:
+        case "cm":
             found_cmd = False
-            # container management
             for method, cmd in DockerWrapper.get_commands().items():
                 if cmd == args.cm_cmd:
                     found_cmd = True
@@ -122,6 +127,10 @@ def main():
                     break
             if not found_cmd:
                 print(f"Command {args.cm_cmd} not found")
+        case "cfg":
+            pass
+        case _:
+            print("Unknown command")
                     
 
 if __name__ == "__main__":

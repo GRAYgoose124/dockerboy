@@ -1,6 +1,10 @@
 import subprocess
 import logging
 
+from typing import Literal
+
+from dockerboy.dockertils.misc import image_to_container_name, update_version
+
 
 logger = logging.getLogger(__name__)
 
@@ -58,50 +62,93 @@ class DockerWrapper:
         """ri"""
         subprocess.run(["docker", "rmi", image_name])
 
+
+    # container state
+    @staticmethod
+    def get_running_containers() -> list[str]:
+        """grc"""
+        return subprocess.run(["docker", "ps"], 
+                                capture_output=True).stdout.decode().split()[1::]
+    
+    @staticmethod
+    def get_all_containers() -> list[str]:
+        """gac"""
+        return subprocess.run(["docker", "ps", "-a"], 
+                                capture_output=True).stdout.decode().split()[1::]
+
     @staticmethod
     def is_container_running(container_name: str):
         """icr"""
-        if subprocess.run(["docker", "ps"], 
-                            capture_output=True).stdout.decode().split().count(container_name) == 1:
-            return True
-        else:
-            return False
+        return container_name in DockerWrapper.get_running_containers()
 
     @staticmethod
     def does_container_exist(container_name: str):
         """dce"""
-        if subprocess.run(["docker", "ps", "-a"], 
-                            capture_output=True).stdout.decode().split().count(container_name) == 1:
-            return True
-        else:
-            return False
+        return container_name in DockerWrapper.get_all_containers()
+
+    def get_container_name_from_id(container_id: str):
+        """gcnfi"""
+        return subprocess.run(["docker", "ps", "-a", "--filter", f"id={container_id}", "--format", "{{.Names}}"],
+                                capture_output=True).stdout.decode().strip()
 
     @staticmethod
     def get_container_id(container_name: str):
         """gci"""
         # TODO: presumes only one container with the same name exists
-        return subprocess.run(["docker", "ps", "-a", "--filter", f"name={container_name}", "--format", "{{.ID}}"],
+        ids = subprocess.run(["docker", "ps", "-a", "--filter", f"name={container_name}", "--format", "{{.ID}}"],
                                 capture_output=True).stdout.decode().strip()
+        # check if there are multiple ids separated by a newline
+        if "\n" in ids:
+            ids = ids.split("\n")
+            logger.warning(f"Multiple containers matching {container_name} exist: {ids}")
+            return ids[0]
+        else:
+            return ids
+    
+    @staticmethod
+    def get_container_ps_format(container_name: str, format_type: Literal["ID", "Image", "Command", "Created", "Status", "Ports", "Names"]):
+        """gcf"""
+        return subprocess.run(["docker", "ps", "-a", "--filter", f"name={container_name}", "--format", f"{{.{format_type}}}"], 
+            capture_output=True).stdout.decode().strip()
 
     @staticmethod
     def commit_stopped_container(container_name: str):
         """csc"""
         # TODO: presumes only one container with the same name exists
         container_id = DockerWrapper.get_container_id(container_name)
+        if not isinstance(container_id, str):
+            raise ValueError(f"Multiple containers matching {container_name} exist: {container_id}")
+
+        # Update the container_name by appending a version number
+        container_name = update_version(container_name)
+
         subprocess.run(["docker", "commit", container_id, container_name])
 
+        return container_name
+        
     @staticmethod
-    def image_to_container_name(image_name: str):
-        """itcn"""
-        """Dockerboy API always defines a container name as the image name with "image" replaced by "container".
-        The image name always ends with "image" and the container name always ends with "container".
-        """
-        return image_name.replace("image", "container")
+    def rebuild_container(container_name: str):
+        """rbic"""
+        # Does the container exist?
+        if not DockerWrapper.does_container_exist(container_name):
+            raise ValueError(f"Container {container_name} does not exist")
+
+        # Ensure container is stopped
+        if DockerWrapper.is_container_running(container_name):
+            DockerWrapper.shutdown_container(container_name)
+
+        # First, commit the container
+        new_container_name = DockerWrapper.commit_stopped_container(container_name)
+
+        # Then, remove the old container
+        DockerWrapper.remove_container(container_name)
+
+        return new_container_name
 
     @staticmethod
     def get_built_images(container_name: str):
         """gbi"""
-        image_name = DockerWrapper.image_to_container_name(container_name)
+        image_name = image_to_container_name(container_name)
         return subprocess.run(["docker", "images", "--filter", f"reference={image_name}", "--format", "{{.Repository}}"],
                                 capture_output=True).stdout.decode().strip()
 

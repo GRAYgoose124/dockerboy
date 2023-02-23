@@ -126,6 +126,12 @@ class MyContainer:
     def build_image(self):
         return self._image.build()
 
+    def rebuild(self):
+        self.name = DockerWrapper.rebuild_container(self.name)
+        self._image = MyImage(self.name, self._image.dockerfile)
+
+        self.build_image()
+
     @staticmethod
     def from_image(image: MyImage, build=False): 
         cls = MyContainer(
