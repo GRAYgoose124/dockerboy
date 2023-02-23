@@ -4,7 +4,7 @@ import subprocess
 from dataclasses import dataclass, field
 from dataclasses import dataclass
 
-from .dockerutils import build, exec_or_run
+from .dockerutils import build, exec_or_run, shutdown_container, is_container_running
 
 @dataclass
 class MyContainerSpec:
@@ -68,6 +68,7 @@ class MyImage:
 @dataclass
 class MyContainer:
     _image: MyImage = field(init=False)
+    _alive: bool = field(init=False)
     name: str
     host_dir: str
     container_dir: str
@@ -77,9 +78,11 @@ class MyContainer:
     post_removal: bool
 
     def __post_init__(self):
+        self._image = None
+        self._alive = is_container_running(self.name)
         self._configured = False
 
-    def run(self, cmd: list[str], build=False):
+    def run(self, cmd: list[str], build=False, interactive=None, post_removal=None):
         if isinstance(cmd, str):
             cmd = cmd.split()
 
@@ -90,11 +93,25 @@ class MyContainer:
             self._image.build()
 
         if self._image.is_ready():
+            if interactive is None:
+                interactive = self.interactive
+            if post_removal is None:
+                post_removal = self.post_removal
+
             exec_or_run(self._image.name, self.name, self.host_dir, cmd, 
-                container_dir=self.container_dir, interactive=self.interactive, 
-                post_removal=self.post_removal, port=self.ports)
+                container_dir=self.container_dir, interactive=interactive, 
+                post_removal=post_removal, port=self.ports)
+
+            self._alive = is_container_running(self.name)
         else:
             print(f"Image {self._image.name} failed to execute, check build status!")
+
+    def shutdown(self):
+        if self._alive:
+            shutdown_container(self.name)
+            self._alive = is_container_running(self.name)
+
+            print(f"Shutdown status: {not self._alive}")
 
     def build_image(self):
         return self._image.build()
@@ -122,10 +139,16 @@ class MyContainer:
 
         return 
 
-    def configure(self, host_dir: str, ports: list[tuple[int, int]] = [(6006,)], interactive: bool = True, post_removal: bool = True):
-        self.host_dir = host_dir
+    def configure(self, host_dir: str = None, ports: list[tuple[int, int]] = None, interactive: bool = True, post_removal: bool = True):
+        if self.host_dir is not None:
+            self.host_dir = host_dir
         self.container_dir = "/" + host_dir.split("/")[-1]
-        self.ports = ports
+
+        if ports is not None:
+            self.ports = ports
+        else:
+            self.ports = [(6006,6006)]
+
         self.interactive = interactive
         self.post_removal = post_removal
 

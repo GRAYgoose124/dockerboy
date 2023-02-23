@@ -21,14 +21,23 @@ def argparser():
     subparsers = parser.add_subparsers(dest="cmd")
     subparsers.required = True
 
-    cmds = { "Build": "b", "Run": "r", "Tensorboard": "tb", "Config gen": "cg" }
+    cmds = { "Build": "b",
+             "Run": "r", 
+             "Shutdown": "sd",
+             "Tensorboard": "tb", 
+             "Config gen": "cg" }
 
     # build subcmd
     build_parser = subparsers.add_parser(cmds["Build"])
 
     # run subcmd
     run_parser = subparsers.add_parser(cmds["Run"])
+    run_parser.add_argument("-ni", "--non-interactive", action="store_false", dest="interactive", default=True)
+    run_parser.add_argument("-nrm", "--post-removal", action="store_false", dest="post_removal", default=True)
     run_parser.add_argument("run_cmd", type=str, nargs="+")
+
+    # shutdown subcmd
+    shutdown_parser = subparsers.add_parser(cmds["Shutdown"])
 
     # tensorboard subcmd
     tensorboard_parser = subparsers.add_parser(cmds["Tensorboard"])
@@ -75,7 +84,9 @@ def main():
         case "b":
             my_container.build_image()
         case "r":
-            my_container.run(args.run_cmd)
+            my_container.run(args.run_cmd, interactive=args.interactive, post_removal=args.post_removal)
+        case "sd":
+            my_container.shutdown()
         case "tb":
             my_container.run("tensorboard --logdir tb_logs")
         case "cg":

@@ -1,5 +1,6 @@
 import subprocess
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +33,16 @@ def exec_or_run(image_name: str, container_name: str, host_dir: str,
         interactive: bool = True, post_removal: bool = True
     ):
     # If the container is already running, just execute the command in it
-    if subprocess.run(["docker", "ps", "-a"], 
-                        capture_output=True).stdout.decode().split().count(container_name) == 1:
+    if is_container_running(container_name):
         print(f"Container {container_name} already exists. Executing \"{cmd}\" in it.")
+        subprocess.run(["docker", "exec", "-it", container_name, *cmd])
+    elif does_container_exist(container_name):
+        # TODO: Restart with new command either by rebuilding from image or by using docker commit
+        print(f"Container {container_name} already exists, but is not running. Starting it and executing \"{cmd}\"")
+        result = subprocess.run(["docker", "start", container_name], capture_output=True).stdout.decode()
+        print(result)
+            
+        time.sleep(1)
         subprocess.run(["docker", "exec", "-it", container_name, *cmd])
     else:
         optional = []
@@ -63,3 +71,27 @@ def exec_or_run(image_name: str, container_name: str, host_dir: str,
 
         logger.debug(f"Running command: {' '.join(final_cmd)}")
         subprocess.run(final_cmd)
+
+
+def shutdown_container(container_name: str):
+    subprocess.run(["docker", "stop", container_name])
+  
+
+
+def is_container_running(container_name: str):
+    if subprocess.run(["docker", "ps"], 
+                        capture_output=True).stdout.decode().split().count(container_name) == 1:
+        return True
+    else:
+        return False
+
+def does_container_exist(container_name: str):
+    if subprocess.run(["docker", "ps", "-a"], 
+                        capture_output=True).stdout.decode().split().count(container_name) == 1:
+        return True
+    else:
+        return False
+
+def restart_with_new_cmd(container_name: str):
+    # https://stackoverflow.com/questions/32353055/how-to-start-a-stopped-docker-container-with-a-different-command
+    # https://www.thorsten-hans.com/how-to-run-commands-in-stopped-docker-containers/
