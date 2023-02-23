@@ -40,29 +40,6 @@ def container_run(image_name: str, container_name: str, host_dir: str,
         subprocess.run(final_cmd)
 
 
-def exec_or_run(image_name: str, container_name: str, host_dir: str, 
-        cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None), 
-        interactive: bool = True, post_removal: bool = True
-    ):
-    # If the container is already running, just execute the command in it
-    if DockerWrapper.is_container_running(container_name):
-        print(f"Container {container_name} already exists. Executing \"{cmd}\" in it.")
-        subprocess.run(["docker", "exec", "-it", container_name, *cmd])
-    elif DockerWrapper.does_container_exist(container_name):
-        # TODO: Restart with new command either by rebuilding from image or by using docker commit
-        print(f"Container {container_name} already exists, but is not running. Starting it and executing \"{cmd}\"")
-        start_str = subprocess.run(["docker", "start", container_name], capture_output=True).stdout.decode()
-        if "Error" in start_str:
-            print(start_str)
-            return
-        else:
-            print("Started container")
-
-        subprocess.run(["docker", "exec", "-it", container_name, *cmd])
-    else:
-        cmd_new_container(image_name, container_name, host_dir, cmd, container_dir, port, interactive, post_removal)
-
-
 def cmd_new_container(image_name: str, container_name: str, host_dir: str,
         cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None),
         interactive: bool = True, post_removal: bool = True):
@@ -77,3 +54,28 @@ def cmd_new_container(image_name: str, container_name: str, host_dir: str,
     
     container_run(image_name, container_name, host_dir, cmd, container_dir, port, interactive, post_removal)
 
+
+def exec_or_run(image_name: str, container_name: str, host_dir: str, 
+        cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None), 
+        interactive: bool = True, post_removal: bool = True
+    ):
+    # If the container is already running, just execute the command in it
+    if DockerWrapper.is_container_running(container_name):
+        print(f"Container {container_name} already exists. Executing \"{cmd}\" in it.")
+        subprocess.run(["docker", "exec", "-it", container_name, *cmd])
+    elif DockerWrapper.does_container_exist(container_name):
+        # TODO: Restart with new command either by rebuilding from image or by using docker commit
+        # This probably only works for containers that were originally started with a living process
+        # such as python or bash.
+        print(f"Container {container_name} already exists, but is not running. Starting it and executing \"{cmd}\"")
+        start_str = subprocess.run(["docker", "start", container_name], capture_output=True).stdout.decode()
+        if "Error" in start_str:
+            print(start_str)
+            return
+        else:
+            print("Started container")
+
+        subprocess.run(["docker", "exec", "-it", container_name, *cmd])
+    else:
+        print(f"Container {container_name} does not exist. Creating it and executing \"{cmd}\"")
+        cmd_new_container(image_name, container_name, host_dir, cmd, container_dir, port, interactive, post_removal)

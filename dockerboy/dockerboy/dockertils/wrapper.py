@@ -104,3 +104,8 @@ class DockerWrapper:
         image_name = DockerWrapper.image_to_container_name(container_name)
         return subprocess.run(["docker", "images", "--filter", f"reference={image_name}", "--format", "{{.Repository}}"],
                                 capture_output=True).stdout.decode().strip()
+
+    @staticmethod
+    def kill_container(container_name: str):
+        """kc"""
+        subprocess.run(["docker", "kill", container_name])

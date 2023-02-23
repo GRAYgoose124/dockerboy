@@ -98,6 +98,10 @@ def main():
         case "r":
             print(f"We will remove the container after running: {args.post_removal}")
             my_container.run(args.run_cmd, interactive=args.interactive, post_removal=args.post_removal)
+
+            # if a container was created without --rm before, we need to remove it manually
+            if args.post_removal and DockerWrapper.does_container_exist(my_container.name):
+                my_container.remove()
         case "sd":
             my_container.shutdown()
         case "rm":
