@@ -21,10 +21,26 @@ match args.cmd:
 
     dboy -h
 
-If you somehow configure `.dboy.yaml` generated from `dboy -cg` properly, then you can try:
 
-    dboy b
+## Running
+You should create a shared dir and a Dockerfile first.
+### Generate config
+    dboy cfg -i
+
+### Build and run some command
+
+    dboy b [--rebuild]
     dboy r <command>
 
     # especially while something is already running
     dboy tb 
+
+## Container management
+This is a passthrough for DockerWrapper - you can run anything there. Rudimentary.
+
+    dboy cm -h
+
+This works on the currently managed container:
+
+    dboy sd
+    dboy rm

@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-import json
-from dockerboy.dockertils.misc import default_config
-from dockerboy.dockertils.wrapper import DockerWrapper
+from dockerboy.utils.wrapper import DockerWrapper
+from dockerboy.utils.config import interactive_config_builder, load_config, default_config, save_config
 import yaml
 
 import os
 import logging
 import argparse
 
-from .mydocker import MyContainerSpec
-
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
+cmds = { "Build": "b",
+            "Run": "r", 
+            "Remove": "rm",
+            "Shutdown": "sd",
+            "Tensorboard": "tb", 
+            "Config gen": "cfg",
+            "Container management": "cm" }
 
 def argparser():
     parser = argparse.ArgumentParser()
@@ -22,14 +26,6 @@ def argparser():
     # main cmd
     subparsers = parser.add_subparsers(dest="cmd")
     subparsers.required = True
-
-    cmds = { "Build": "b",
-             "Run": "r", 
-             "Remove": "rm",
-             "Shutdown": "sd",
-             "Tensorboard": "tb", 
-             "Config gen": "cg",
-             "Container management": "cm" }
 
     # build subcmd
     build_parser = subparsers.add_parser(cmds["Build"])
@@ -52,7 +48,7 @@ def argparser():
 
     # config gen subcmd
     config_gen_parser = subparsers.add_parser(cmds["Config gen"])
-    config_gen_parser.add_argument("config_file", type=str, help="path to config file", default=".dboy.yaml.default", nargs="?")
+    config_gen_parser.add_argument("-i", "--interactive", action="store_true", dest="build_cfg_interactive", default=False)
 
     # container management subcmd
     container_management_parser = subparsers.add_parser(cmds["Container management"])
@@ -74,15 +70,21 @@ def main():
     else:
         cfg_file = ".dboy.yaml"
 
-    try:
-        with open(cfg_file, "r") as f:
-            # TODO: Safe load config file
-            config = yaml.unsafe_load(f)
-    except FileNotFoundError:
-        print(f"Config file {cfg_file} not found, using default config")
-        config = MyContainerSpec(**default_config())
+    # If this is set, we're running a `cfg` command which will generate a config file and exit.
+    if args.cmd == cmds["Config gen"]:
+        if args.build_cfg_interactive:
+            save_config(interactive_config_builder(), args.config)
+        else:
+            save_config(default_config(), args.config)
+    else:
+        if not os.path.exists(cfg_file):
+            # Generate config
+            config = interactive_config_builder()
+            save_config(config, cfg_file)
+        else:
+            config = load_config(cfg_file)
 
-    my_container = config.into_container()
+        my_container = config.into_container()
 
     match args.cmd:
         case "b":
@@ -97,15 +99,11 @@ def main():
             # if a container was created without --rm before, we need to remove it manually
             if args.post_removal and DockerWrapper.does_container_exist(my_container.name):
                 my_container.remove()
+        # TODO: can be CM commands?
         case "sd":
             my_container.shutdown()
-        case "rm":
-            my_container.remove()
         case "tb":
             my_container.run("tensorboard --logdir tb_logs")
-        case "cg":
-            with open(args.config_file, "w") as f:
-                yaml.dump(default_config(), f)
         case "cm":
             found_cmd = False
             for method, cmd in DockerWrapper.get_commands().items():

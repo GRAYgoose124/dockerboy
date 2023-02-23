@@ -3,7 +3,7 @@ import logging
 
 from typing import Literal
 
-from dockerboy.dockertils.misc import image_to_container_name, update_version
+from dockerboy.utils.misc import image_to_container_name, update_version
 
 
 logger = logging.getLogger(__name__)
@@ -75,6 +75,14 @@ class DockerWrapper:
         """gcnfi"""
         return subprocess.run(["docker", "ps", "-a", "--filter", f"id={container_id}", "--format", "{{.Names}}"],
                                 capture_output=True).stdout.decode().strip()
+
+    def is_image_ready(image_name: str):
+        """iir"""
+        images = subprocess.run(["docker", "images", "-a"], capture_output=True).stdout.decode().split()
+        if images.count(image_name) >= 1:
+            return True
+        else:
+            return False
 
     @staticmethod
     def get_container_id(container_name: str):

@@ -1,26 +1,28 @@
-from dockerboy.dockertils.run import exec_or_run
+from dockerboy.utils.run import exec_or_run
 import yaml
 import subprocess
 
 from dataclasses import dataclass, field
 from dataclasses import dataclass
 
-from .dockertils.wrapper import DockerWrapper
-from .dockertils.build import build
+from .utils.wrapper import DockerWrapper
+from .utils.build import build
 
 
 
 
 @dataclass
 class MyContainerSpec:
-    image_name: str
-    dockerfile_path: str
+    name: str
+    dockerfile: str
     host_dir: str
     ports: list[tuple[int, int]]
+
     interactive: bool
     post_removal: bool
     rebuild: bool
 
+    # TODO: Maybe spec shouldn't know about MyContainer and MyImage
     def into_container(self, build=False):
         image = self.into_image()
 
@@ -33,7 +35,7 @@ class MyContainerSpec:
         return cls
     
     def into_image(self):
-        return MyImage(self.image_name, self.dockerfile_path)
+        return MyImage(self.name, self.dockerfile)
 
 
 
@@ -59,11 +61,7 @@ class MyImage:
         
         """
         if self._build_status is None:
-            images = subprocess.run(["docker", "images", "-a"], capture_output=True).stdout.decode().split()
-            if images.count(self.name) >= 1:
-                self._build_status = True
-            else:
-                self._build_status = False
+            self._build_status = DockerWrapper.is_image_ready(self.name)
 
         return self._build_status
 
@@ -73,18 +71,14 @@ class MyImage:
 
 
 @dataclass
-class MyContainer:
+class MyContainer(MyContainerSpec):
     _image: MyImage = field(init=False)
     _alive: bool = field(init=False)
-    name: str
-    host_dir: str
+    # TODO: If we decide to standardize the directory structure, we can remove this
     container_dir: str
-    ports: list[tuple[int, int]]
-
-    interactive: bool
-    post_removal: bool
-    rebuild: bool
-
+    # this was passed to image, but it's not used here
+    dockerfile: str = field(init=False)
+    
     def __post_init__(self):
         self._image = None
         self._alive = DockerWrapper.is_container_running(self.name)
@@ -106,8 +100,6 @@ class MyContainer:
             if post_removal is None:
                 post_removal = self.post_removal
 
-            # Todo build image from old container and run new container rather
-            # than destroying it - rebuild_image/run_container
             new_name = exec_or_run(self._image.name, self.name, self.host_dir, cmd, 
                 container_dir=self.container_dir, interactive=interactive, 
                 post_removal=post_removal, port=self.ports, rebuild=self.rebuild)
@@ -152,7 +144,8 @@ class MyContainer:
             container_dir=None,
             ports=[(None, None)],
             interactive=True,
-            post_removal=True
+            post_removal=True,
+            rebuild=True
         )
         
         cls._image = image

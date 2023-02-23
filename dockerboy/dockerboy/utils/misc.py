@@ -2,28 +2,29 @@
 import os
 
 
-def portcheck(port: tuple[int, int]):
+def format_port(port: tuple[int, int]):
     """ Ports can be malformed: (a,a) (a,) (,b) (a,b) """
     if isinstance(port[0], int) or isinstance(port[1], int):
         if port[0] is None:
             port = (port[1], port[1])
         elif port[1] is None:
             port = (port[0], port[0])
+    else:
+        port = None
 
     return port
 
 
-def default_config():
-    root = os.getcwd()
-    return {
-        "image_name": "default",
-        "dockerfile_path": f"{root}/",
-        "host_dir": f"{root}/shared",
-        "ports": [(6006,6006)],
-        "interactive": True,
-        "post_removal": True,
-        "rebuild": True
-    }
+def format_ports(ports: list[tuple[int, int]]):
+    """ Ports can be malformed: (a,a) (a,) (,b) (a,b) """
+    # filter out Nones and format the ports
+    ports = [format_port(port) for port in ports if port is not None]
+    if len(ports) == 0:
+        ports = None
+    elif len(ports) == 1:
+        ports = ports[0]
+    else:
+        return ports
 
 
 def update_version(container_name: str):

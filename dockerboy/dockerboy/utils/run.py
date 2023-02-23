@@ -1,8 +1,8 @@
 import subprocess
 import logging
 
-from dockerboy.dockertils.wrapper import DockerWrapper
-from dockerboy.dockertils.misc import portcheck
+from dockerboy.utils.wrapper import DockerWrapper
+from dockerboy.utils.misc import format_port
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +15,10 @@ def container_run(image_name: str, container_name: str, host_dir: str,
 
         if isinstance(port, list):
             for p in port:
-                p = portcheck(p)
+                p = format_port(p)
                 optional.extend(["-p", f"0.0.0.0:{p[0]}:{p[1]}"])
         else:
-            port = portcheck(port)
+            port = format_port(port)
             optional.extend(["-p", f"0.0.0.0:{port[0]}:{port[1]}"])
 
         if interactive:
