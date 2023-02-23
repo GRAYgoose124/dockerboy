@@ -1,8 +1,8 @@
 import os
-from dockerboy.dockwrap.mydocker import MyContainerSpec
 import yaml
 from os.path import join
 
+from ..dockwrap.mydocker import MyContainerSpec
 from ..dockwrap.utils.misc import format_ports
 
 

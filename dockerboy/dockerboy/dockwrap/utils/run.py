@@ -1,8 +1,8 @@
 import subprocess
 import logging
 
-from dockerboy.dockwrap.wrapper import DockerWrapper
-from dockerboy.dockwrap.utils.misc import format_port
+from ..wrapper import DockerWrapper
+from .misc import format_port
 
 logger = logging.getLogger(__name__)
 

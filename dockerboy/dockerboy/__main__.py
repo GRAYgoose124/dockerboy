@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-from dockerboy.dockwrap.wrapper import DockerWrapper
-from dockerboy.utils.config import interactive_config_builder, load_config, default_config, save_config
-import yaml
+from .dockwrap.wrapper import DockerWrapper
+from .utils.config import interactive_config_builder, load_config, default_config, save_config
 
 import os
 import logging

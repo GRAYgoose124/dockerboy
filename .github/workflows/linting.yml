@@ -1,0 +1,15 @@
+# github workflow to lint python project
+name: autoformat
+on: [push, pull_request]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Autoformat with autopep8
+        run: |
+          pip install autopep8
+          autopep8 --in-place --aggressive --recursive .

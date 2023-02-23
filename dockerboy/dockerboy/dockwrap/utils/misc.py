@@ -1,7 +1,3 @@
-# misc util helpers
-import os
-
-
 def format_port(port: tuple[int, int]):
     """ Ports can be malformed: (a,a) (a,) (,b) (a,b) """
     if isinstance(port[0], int) or isinstance(port[1], int):

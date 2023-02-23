@@ -3,7 +3,7 @@ import logging
 
 from typing import Literal
 
-from dockerboy.dockwrap.utils.misc import image_to_container_name, update_version
+from .utils.misc import image_to_container_name, update_version
 
 
 logger = logging.getLogger(__name__)

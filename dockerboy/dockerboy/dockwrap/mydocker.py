@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from dataclasses import dataclass
 
 from .wrapper import DockerWrapper
-from dockerboy.dockwrap.utils.build import build
-from dockerboy.dockwrap.utils.run import exec_or_run
+from .utils.build import build
+from .utils.run import exec_or_run
 
 @dataclass
 class MyContainerSpec:
