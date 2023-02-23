@@ -23,6 +23,7 @@ def argparser():
 
     cmds = { "Build": "b",
              "Run": "r", 
+             "Remove": "rm",
              "Shutdown": "sd",
              "Tensorboard": "tb", 
              "Config gen": "cg" }
@@ -36,6 +37,9 @@ def argparser():
     run_parser.add_argument("-nrm", "--post-removal", action="store_false", dest="post_removal", default=True)
     run_parser.add_argument("run_cmd", type=str, nargs="+")
 
+    # remove subcmd
+    remove_parser = subparsers.add_parser(cmds["Remove"])
+    
     # shutdown subcmd
     shutdown_parser = subparsers.add_parser(cmds["Shutdown"])
 
@@ -87,6 +91,8 @@ def main():
             my_container.run(args.run_cmd, interactive=args.interactive, post_removal=args.post_removal)
         case "sd":
             my_container.shutdown()
+        case "rm":
+            my_container.remove()
         case "tb":
             my_container.run("tensorboard --logdir tb_logs")
         case "cg":

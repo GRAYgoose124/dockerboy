@@ -4,7 +4,7 @@ import subprocess
 from dataclasses import dataclass, field
 from dataclasses import dataclass
 
-from .dockerutils import build, exec_or_run, shutdown_container, is_container_running
+from .dockerutils import build, cmd_new_container, exec_or_run, get_container_id, remove_container, shutdown_container, is_container_running
 
 @dataclass
 class MyContainerSpec:
@@ -98,6 +98,8 @@ class MyContainer:
             if post_removal is None:
                 post_removal = self.post_removal
 
+            # Todo build image from old container and run new container rather
+            # than destroying it - rebuild_image/run_container
             exec_or_run(self._image.name, self.name, self.host_dir, cmd, 
                 container_dir=self.container_dir, interactive=interactive, 
                 post_removal=post_removal, port=self.ports)
@@ -113,6 +115,12 @@ class MyContainer:
 
             print(f"Shutdown status: {not self._alive}")
 
+    def remove(self):
+        if self._alive:
+            self.shutdown()
+
+        remove_container(self.name)
+        
     def build_image(self):
         return self._image.build()
 
@@ -140,8 +148,9 @@ class MyContainer:
         return 
 
     def configure(self, host_dir: str = None, ports: list[tuple[int, int]] = None, interactive: bool = True, post_removal: bool = True):
-        if self.host_dir is not None:
+        if host_dir is not None:
             self.host_dir = host_dir
+            
         self.container_dir = "/" + host_dir.split("/")[-1]
 
         if ports is not None:

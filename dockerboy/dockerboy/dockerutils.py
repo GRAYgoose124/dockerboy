@@ -28,23 +28,10 @@ def portcheck(port: tuple[int, int]):
     return port
 
 
-def exec_or_run(image_name: str, container_name: str, host_dir: str, 
-        cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None), 
+def container_run(image_name: str, container_name: str, host_dir: str,
+        cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None),
         interactive: bool = True, post_removal: bool = True
     ):
-    # If the container is already running, just execute the command in it
-    if is_container_running(container_name):
-        print(f"Container {container_name} already exists. Executing \"{cmd}\" in it.")
-        subprocess.run(["docker", "exec", "-it", container_name, *cmd])
-    elif does_container_exist(container_name):
-        # TODO: Restart with new command either by rebuilding from image or by using docker commit
-        print(f"Container {container_name} already exists, but is not running. Starting it and executing \"{cmd}\"")
-        result = subprocess.run(["docker", "start", container_name], capture_output=True).stdout.decode()
-        print(result)
-            
-        time.sleep(1)
-        subprocess.run(["docker", "exec", "-it", container_name, *cmd])
-    else:
         optional = []
 
         if isinstance(port, list):
@@ -73,10 +60,26 @@ def exec_or_run(image_name: str, container_name: str, host_dir: str,
         subprocess.run(final_cmd)
 
 
+def exec_or_run(image_name: str, container_name: str, host_dir: str, 
+        cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None), 
+        interactive: bool = True, post_removal: bool = True
+    ):
+    # If the container is already running, just execute the command in it
+    if is_container_running(container_name):
+        print(f"Container {container_name} already exists. Executing \"{cmd}\" in it.")
+        subprocess.run(["docker", "exec", "-it", container_name, *cmd])
+    elif does_container_exist(container_name):
+        # TODO: Restart with new command either by rebuilding from image or by using docker commit
+        print(f"Container {container_name} already exists, but is not running. Starting it and executing \"{cmd}\"")
+        subprocess.run(["docker", "start", container_name], capture_output=True).stdout.decode()
+        subprocess.run(["docker", "exec", "-it", container_name, *cmd])
+    else:
+        container_run(image_name, container_name, host_dir, cmd, container_dir, port, interactive, post_removal)
+
+
 def shutdown_container(container_name: str):
     subprocess.run(["docker", "stop", container_name])
   
-
 
 def is_container_running(container_name: str):
     if subprocess.run(["docker", "ps"], 
@@ -85,6 +88,7 @@ def is_container_running(container_name: str):
     else:
         return False
 
+
 def does_container_exist(container_name: str):
     if subprocess.run(["docker", "ps", "-a"], 
                         capture_output=True).stdout.decode().split().count(container_name) == 1:
@@ -92,6 +96,36 @@ def does_container_exist(container_name: str):
     else:
         return False
 
-def restart_with_new_cmd(container_name: str):
+
+def get_container_id(container_name: str):
+    # TODO: presumes only one container with the same name exists
+    return subprocess.run(["docker", "ps", "-a", "--filter", f"name={container_name}", "--format", "{{.ID}}"],
+                            capture_output=True).stdout.decode().strip()
+
+
+def commit_stopped_container(container_name: str):
+    # TODO: presumes only one container with the same name exists
+    container_id = get_container_id(container_name)
+    subprocess.run(["docker", "commit", container_id, container_name])
+
+
+def remove_container(container_name: str):
+    # remove by id
+    subprocess.run(["docker", "rm", get_container_id(container_name)])
+
+
+def cmd_new_container(image_name: str, container_name: str, host_dir: str,
+        cmd: list[str], container_dir: str = None, port: list[tuple] | tuple = (None, None),
+        interactive: bool = True, post_removal: bool = True):
     # https://stackoverflow.com/questions/32353055/how-to-start-a-stopped-docker-container-with-a-different-command
     # https://www.thorsten-hans.com/how-to-run-commands-in-stopped-docker-containers/
+
+    if does_container_exist(container_name):
+        if is_container_running(container_name):
+            shutdown_container(container_name)
+
+        remove_container(container_name)
+    
+    container_run(image_name, container_name, host_dir, cmd, container_dir, port, interactive, True)
+
+
